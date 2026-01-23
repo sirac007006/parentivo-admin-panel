@@ -62,10 +62,12 @@ export const USER_ROLES = {
   USER: 'USER'
 } as const;
 
-// Export default objekat
-export default {
+// Export default objekat - named export to avoid ESLint error
+const config = {
   API_BASE_URL,
   API_ENDPOINTS,
   API_TIMEOUT,
   USER_ROLES,
 };
+
+export default config;

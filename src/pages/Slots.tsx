@@ -59,6 +59,7 @@ const Slots = () => {
 
   useEffect(() => {
     fetchSlots();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleOpenCreateDialog = () => {

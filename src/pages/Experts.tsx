@@ -26,7 +26,6 @@ import {
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
-  Edit as EditIcon,
   School as SchoolIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
@@ -86,6 +85,7 @@ const Experts: React.FC = () => {
   useEffect(() => {
     fetchExperts();
     fetchSpecializations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSearch = () => {

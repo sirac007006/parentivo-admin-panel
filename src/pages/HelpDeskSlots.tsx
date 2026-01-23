@@ -18,10 +18,6 @@ import {
   Typography,
   TextField,
   Chip,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
@@ -43,7 +39,6 @@ const HelpDeskSlots = () => {
   const [formMaxChildren, setFormMaxChildren] = useState(10);
   const [formStartAt, setFormStartAt] = useState('');
   const [formEndAt, setFormEndAt] = useState('');
-  const [formCount, setFormCount] = useState(1);
 
   const fetchSlots = async () => {
     setLoading(true);
@@ -59,6 +54,7 @@ const HelpDeskSlots = () => {
 
   useEffect(() => {
     fetchSlots();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleOpenCreateDialog = () => {
@@ -67,7 +63,6 @@ const HelpDeskSlots = () => {
     setFormMaxChildren(10);
     setFormStartAt('');
     setFormEndAt('');
-    setFormCount(1);
     setFormDialogOpen(true);
   };
 
@@ -77,7 +72,6 @@ const HelpDeskSlots = () => {
     setFormMaxChildren(slot.maxChildren || 10);
     setFormStartAt(slot.startAt ? slot.startAt.substring(0, 16) : '');
     setFormEndAt(slot.endAt ? slot.endAt.substring(0, 16) : '');
-    setFormCount(1);
     setFormDialogOpen(true);
   };
 

@@ -55,6 +55,7 @@ const Specializations: React.FC = () => {
 
   useEffect(() => {
     fetchSpecializations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSearch = () => fetchSpecializations();

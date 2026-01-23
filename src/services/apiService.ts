@@ -552,7 +552,8 @@ export const MeetingService = {
   },
 };
 
-export default {
+// Named export to avoid ESLint error
+const apiService = {
   UserService,
   ForumCategoryService,
   SpecializationService,
@@ -561,3 +562,5 @@ export default {
   SlotService,
   MeetingService,
 };
+
+export default apiService;
