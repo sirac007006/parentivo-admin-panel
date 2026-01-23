@@ -5,12 +5,7 @@ import AuthService from '../services/authService';
 const DashboardNew = () => {
   const userData = AuthService.getUserData();
 
-  const stats = [
-    { title: 'Ukupno korisnika', value: '10', icon: '👥', color: 'bg-blue-500', visible: userData?.role === 'SUPERADMIN' },
-    { title: 'Zavisnosti', value: '8', icon: '🔥', color: 'bg-red-500', visible: userData?.role === 'SUPERADMIN' },
-    { title: 'Forum kategorije', value: '8', icon: '💬', color: 'bg-green-500', visible: ['SUPERADMIN', 'ADMIN'].includes(userData?.role) },
-    { title: 'Nagrade', value: '9', icon: '🏆', color: 'bg-yellow-500', visible: userData?.role === 'SUPERADMIN' },
-  ].filter(stat => stat.visible);
+
 
   return (
     <div>
@@ -24,26 +19,7 @@ const DashboardNew = () => {
         </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {stats.map((stat, index) => (
-          <div key={index} className="card hover:shadow-lg transition-shadow cursor-pointer">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">
-                  {stat.title}
-                </p>
-                <p className="text-3xl font-bold text-gray-900">
-                  {stat.value}
-                </p>
-              </div>
-              <div className={`${stat.color} p-4 rounded-xl shadow-lg`}>
-                <span className="text-3xl">{stat.icon}</span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+
 
       {/* Info Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

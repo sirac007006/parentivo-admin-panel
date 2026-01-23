@@ -193,33 +193,29 @@ const ForumCategories: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow>
+              <TableCell>ID</TableCell>
               <TableCell>Naziv</TableCell>
-              <TableCell>Opis</TableCell>
-              <TableCell>Kreirana</TableCell>
               <TableCell align="right">Akcije</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={4} align="center">
+                <TableCell colSpan={3} align="center">
                   Učitavanje...
                 </TableCell>
               </TableRow>
             ) : categories.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} align="center">
+                <TableCell colSpan={3} align="center">
                   Nema kategorija
                 </TableCell>
               </TableRow>
             ) : (
               categories.map((category) => (
                 <TableRow key={category.id}>
+                  <TableCell>{category.id}</TableCell>
                   <TableCell>{category.name}</TableCell>
-                  <TableCell>{category.description || '-'}</TableCell>
-                  <TableCell>
-                    {new Date(category.createdAt).toLocaleDateString()}
-                  </TableCell>
                   <TableCell align="right">
                     <IconButton
                       color="primary"

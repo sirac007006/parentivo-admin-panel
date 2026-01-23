@@ -12,6 +12,7 @@ const ReportedPosts: React.FC = () => {
   const [postIdFilter, setPostIdFilter] = useState('');
   const [deleteReportDialogOpen, setDeleteReportDialogOpen] = useState(false);
   const [deletePostDialogOpen, setDeletePostDialogOpen] = useState(false);
+  const [rejectPostDialogOpen, setRejectPostDialogOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<ReportedPost | null>(null);
 
   const fetchReports = async () => {
@@ -50,6 +51,11 @@ const ReportedPosts: React.FC = () => {
     setDeletePostDialogOpen(true);
   };
 
+  const handleRejectPost = (report: ReportedPost) => {
+    setSelectedReport(report);
+    setRejectPostDialogOpen(true);
+  };
+
   const handleConfirmDeleteReport = async () => {
     if (!selectedReport) return;
     try {
@@ -71,6 +77,18 @@ const ReportedPosts: React.FC = () => {
       fetchReports();
     } catch (error: any) {
       toast.error('Greška pri brisanju posta: ' + error.message);
+    }
+  };
+
+  const handleConfirmRejectPost = async () => {
+    if (!selectedReport) return;
+    try {
+      await ReportService.rejectPost(selectedReport.postId);
+      toast.success('Post uspješno odbijen');
+      setRejectPostDialogOpen(false);
+      fetchReports();
+    } catch (error: any) {
+      toast.error('Greška pri odbijanju posta: ' + error.message);
     }
   };
 
@@ -119,8 +137,9 @@ const ReportedPosts: React.FC = () => {
                   <TableCell>{report.reason || '-'}</TableCell>
                   <TableCell>{new Date(report.createdAt).toLocaleString()}</TableCell>
                   <TableCell align="right">
+                    <IconButton color="warning" onClick={() => handleRejectPost(report)} title="Odbij post"><WarningIcon /></IconButton>
                     <IconButton color="primary" onClick={() => handleDeleteReport(report)} title="Obriši prijavu"><DeleteIcon /></IconButton>
-                    <IconButton color="error" onClick={() => handleDeletePost(report)} title="Obriši post"><WarningIcon /></IconButton>
+                    <IconButton color="error" onClick={() => handleDeletePost(report)} title="Obriši post"><DeleteIcon /></IconButton>
                   </TableCell>
                 </TableRow>
               ))
@@ -144,6 +163,15 @@ const ReportedPosts: React.FC = () => {
         <DialogActions>
           <Button onClick={() => setDeletePostDialogOpen(false)}>Otkaži</Button>
           <Button onClick={handleConfirmDeletePost} variant="contained" color="error">Obriši Post</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={rejectPostDialogOpen} onClose={() => setRejectPostDialogOpen(false)}>
+        <DialogTitle>Potvrda Odbijanja Posta</DialogTitle>
+        <DialogContent><Typography>Da li ste sigurni da želite odbiti ovaj post? Post će biti premješten u odbijene postove.</Typography></DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRejectPostDialogOpen(false)}>Otkaži</Button>
+          <Button onClick={handleConfirmRejectPost} variant="contained" color="warning">Odbij Post</Button>
         </DialogActions>
       </Dialog>
     </Box>

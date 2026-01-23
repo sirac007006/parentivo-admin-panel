@@ -12,6 +12,7 @@ const ReportedComments: React.FC = () => {
   const [commentIdFilter, setCommentIdFilter] = useState('');
   const [deleteReportDialogOpen, setDeleteReportDialogOpen] = useState(false);
   const [deleteCommentDialogOpen, setDeleteCommentDialogOpen] = useState(false);
+  const [rejectCommentDialogOpen, setRejectCommentDialogOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<ReportedComment | null>(null);
 
   const fetchReports = async () => {
@@ -50,6 +51,11 @@ const ReportedComments: React.FC = () => {
     setDeleteCommentDialogOpen(true);
   };
 
+  const handleRejectComment = (report: ReportedComment) => {
+    setSelectedReport(report);
+    setRejectCommentDialogOpen(true);
+  };
+
   const handleConfirmDeleteReport = async () => {
     if (!selectedReport) return;
     try {
@@ -71,6 +77,18 @@ const ReportedComments: React.FC = () => {
       fetchReports();
     } catch (error: any) {
       toast.error('Greška pri brisanju komentara: ' + error.message);
+    }
+  };
+
+  const handleConfirmRejectComment = async () => {
+    if (!selectedReport) return;
+    try {
+      await ReportService.rejectComment(selectedReport.commentId);
+      toast.success('Komentar uspješno odbijen');
+      setRejectCommentDialogOpen(false);
+      fetchReports();
+    } catch (error: any) {
+      toast.error('Greška pri odbijanju komentara: ' + error.message);
     }
   };
 
@@ -119,8 +137,9 @@ const ReportedComments: React.FC = () => {
                   <TableCell>{report.reason || '-'}</TableCell>
                   <TableCell>{new Date(report.createdAt).toLocaleString()}</TableCell>
                   <TableCell align="right">
+                    <IconButton color="warning" onClick={() => handleRejectComment(report)} title="Odbij komentar"><WarningIcon /></IconButton>
                     <IconButton color="primary" onClick={() => handleDeleteReport(report)} title="Obriši prijavu"><DeleteIcon /></IconButton>
-                    <IconButton color="error" onClick={() => handleDeleteComment(report)} title="Obriši komentar"><WarningIcon /></IconButton>
+                    <IconButton color="error" onClick={() => handleDeleteComment(report)} title="Obriši komentar"><DeleteIcon /></IconButton>
                   </TableCell>
                 </TableRow>
               ))
@@ -144,6 +163,15 @@ const ReportedComments: React.FC = () => {
         <DialogActions>
           <Button onClick={() => setDeleteCommentDialogOpen(false)}>Otkaži</Button>
           <Button onClick={handleConfirmDeleteComment} variant="contained" color="error">Obriši Komentar</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={rejectCommentDialogOpen} onClose={() => setRejectCommentDialogOpen(false)}>
+        <DialogTitle>Potvrda Odbijanja Komentara</DialogTitle>
+        <DialogContent><Typography>Da li ste sigurni da želite odbiti ovaj komentar? Komentar će biti premješten u odbijene komentare.</Typography></DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRejectCommentDialogOpen(false)}>Otkaži</Button>
+          <Button onClick={handleConfirmRejectComment} variant="contained" color="warning">Odbij Komentar</Button>
         </DialogActions>
       </Dialog>
     </Box>

@@ -159,23 +159,21 @@ const Specializations: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow>
+              <TableCell>ID</TableCell>
               <TableCell>Naziv</TableCell>
-              <TableCell>Opis</TableCell>
-              <TableCell>Kreirana</TableCell>
               <TableCell align="right">Akcije</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={4} align="center">Učitavanje...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={3} align="center">Učitavanje...</TableCell></TableRow>
             ) : specializations.length === 0 ? (
-              <TableRow><TableCell colSpan={4} align="center">Nema specijalizacija</TableCell></TableRow>
+              <TableRow><TableCell colSpan={3} align="center">Nema specijalizacija</TableCell></TableRow>
             ) : (
               specializations.map((spec) => (
                 <TableRow key={spec.id}>
+                  <TableCell>{spec.id}</TableCell>
                   <TableCell>{spec.name}</TableCell>
-                  <TableCell>{spec.description || '-'}</TableCell>
-                  <TableCell>{new Date(spec.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell align="right">
                     <IconButton color="primary" onClick={() => handleOpenEditDialog(spec)}>
                       <EditIcon />

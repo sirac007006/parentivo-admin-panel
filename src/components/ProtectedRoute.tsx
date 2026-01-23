@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import AuthService from '../services/authService';
+import UnauthorizedAccess from './UnauthorizedAccess';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -18,7 +19,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (requiredRoles && !AuthService.hasRole(requiredRoles)) {
-    return <Navigate to="/" replace />;
+    // Umjesto redirecta, prikaži Unauthorized ekran
+    console.warn('Access denied! User role:', AuthService.getUserData()?.role, 'Required:', requiredRoles);
+    return <UnauthorizedAccess />;
   }
 
   return <>{children}</>;

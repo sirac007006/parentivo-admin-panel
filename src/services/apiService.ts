@@ -275,6 +275,15 @@ export const ReportService = {
     return response.data;
   },
 
+  // PATCH /forum-post/change-status/{postId} - Odbij post (promeni status u REJECTED)
+  rejectPost: async (postId: string) => {
+    const response = await apiClient.patch(
+      `/forum-post/change-status/${postId}`,
+      { status: 'REJECTED' }
+    );
+    return response.data;
+  },
+
   // GET /report/comments
   getReportedComments: async (params?: {
     userId?: string;
@@ -300,6 +309,27 @@ export const ReportService = {
     const response = await apiClient.delete(
       `${API_ENDPOINTS.REPORTED_COMMENT_BY_ID}/${reportId}`
     );
+    return response.data;
+  },
+
+  // PATCH /forum-comment/change-status/{commentId} - Odbij komentar (promeni status u REJECTED)
+  rejectComment: async (commentId: string) => {
+    const response = await apiClient.patch(
+      `/forum-comment/change-status/${commentId}`,
+      { status: 'REJECTED' }
+    );
+    return response.data;
+  },
+
+  // GET /forum-post/rejected - Lista odbijenih postova
+  getRejectedPosts: async () => {
+    const response = await apiClient.get('/forum-post/rejected');
+    return response.data;
+  },
+
+  // GET /forum-comment/rejected - Lista odbijenih komentara
+  getRejectedComments: async () => {
+    const response = await apiClient.get('/forum-comment/rejected');
     return response.data;
   },
 
