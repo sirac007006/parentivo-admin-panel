@@ -30,6 +30,7 @@
     "web-vitals": "^2.1.4"
   },
   "devDependencies": {
+    "ajv": "^6.12.6",
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.0"
