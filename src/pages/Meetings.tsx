@@ -305,7 +305,7 @@ const Meetings = () => {
                     </Box>
                   </TableCell>
                   <TableCell align="right">
-                    {!meeting.isLive && (
+                    {!meeting.isLive && meeting.isActive && (
                       <IconButton color="success" onClick={() => handleStartMeeting(meeting)} title="Pokreni">
                         <StartIcon />
                       </IconButton>
