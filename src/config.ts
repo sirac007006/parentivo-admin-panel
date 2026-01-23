@@ -1,5 +1,5 @@
-// API konfiguracija
-export const API_BASE_URL = 'http://157.90.237.216:3333';
+// API konfiguracija - čita iz .env fajla
+export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://api.parentivo.online';
 
 export const API_ENDPOINTS = {
   // Auth endpoints
@@ -52,7 +52,7 @@ export const API_ENDPOINTS = {
   MEETINGS_ADMIN: '/meetings/admin',
 };
 
-export const API_TIMEOUT = 30000; // 30 sekundi
+export const API_TIMEOUT = parseInt(process.env.REACT_APP_API_TIMEOUT || '30000', 10);
 
 // User roles
 export const USER_ROLES = {

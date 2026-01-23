@@ -19,8 +19,6 @@ const DashboardNew = () => {
         </p>
       </div>
 
-
-
       {/* Info Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* User Info */}
