@@ -29,6 +29,7 @@ import {
   Stop as StopIcon,
   Refresh as RefreshIcon,
   CloudUpload as UploadIcon,
+  Visibility as VisibilityIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { apiClient } from '../services/authService';
@@ -42,6 +43,7 @@ const Meetings = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [startDialogOpen, setStartDialogOpen] = useState(false);
   const [endDialogOpen, setEndDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -53,6 +55,7 @@ const Meetings = () => {
   const [formScheduledAt, setFormScheduledAt] = useState('');
   const [formImage, setFormImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [existingImage, setExistingImage] = useState(null);
 
   // Get minimum datetime (current time)
   const getMinDateTime = () => {
@@ -134,13 +137,14 @@ const Meetings = () => {
     setFormScheduledAt('');
     setFormImage(null);
     setImagePreview(null);
+    setExistingImage(null);
     setFormDialogOpen(true);
   };
 
   const handleOpenEditDialog = (meeting) => {
-    // Provjeri da li je sastanak završen (nije aktivan i nije uživo)
-    if (!meeting.isActive && !meeting.isLive) {
-      toast.warning('Ne možete urediti završenu/neaktivnu radionicu');
+    // Provjeri da li je sastanak završen, neaktivan ili uživo
+    if (!meeting.isActive || meeting.isLive) {
+      toast.warning('Ne možete urediti završenu, neaktivnu ili uživo radionicu');
       return;
     }
 
@@ -151,7 +155,8 @@ const Meetings = () => {
     setFormSpeakerName(meeting.speakerName || '');
     setFormSpeakerBio(meeting.speakerBio || '');
     setFormImage(null);
-    setImagePreview(meeting.image || null);
+    setImagePreview(null);
+    setExistingImage(meeting.image || null);
 
     // Defensively handle scheduledAt date
     if (meeting.scheduledAt && meeting.scheduledAt !== 'Invalid Date') {
@@ -170,6 +175,11 @@ const Meetings = () => {
     }
 
     setFormDialogOpen(true);
+  };
+
+  const handleViewMeeting = (meeting) => {
+    setSelectedMeeting(meeting);
+    setViewDialogOpen(true);
   };
 
   const handleSaveMeeting = async () => {
@@ -292,7 +302,7 @@ const Meetings = () => {
 
   // Helper function to check if meeting can be edited
   const canEditMeeting = (meeting) => {
-    return meeting.isActive || meeting.isLive;
+    return meeting.isActive && !meeting.isLive;
   };
 
   return (
@@ -377,11 +387,14 @@ const Meetings = () => {
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1 }}>
                       {meeting.isLive && <Chip label="UŽIVO" color="success" size="small" />}
-                      {meeting.isActive && <Chip label="Aktivna" color="primary" size="small" />}
+                      {meeting.isActive && !meeting.isLive && <Chip label="Aktivna" color="primary" size="small" />}
                       {!meeting.isLive && !meeting.isActive && <Chip label="Završena" color="default" size="small" />}
                     </Box>
                   </TableCell>
                   <TableCell align="right">
+                    <IconButton color="info" onClick={() => handleViewMeeting(meeting)} title="Pogledaj detalje">
+                      <VisibilityIcon />
+                    </IconButton>
                     {!meeting.isLive && meeting.isActive && (
                       <IconButton color="success" onClick={() => handleStartMeeting(meeting)} title="Pokreni">
                         <StartIcon />
@@ -396,7 +409,7 @@ const Meetings = () => {
                       color="primary" 
                       onClick={() => handleOpenEditDialog(meeting)}
                       disabled={!canEditMeeting(meeting)}
-                      title={canEditMeeting(meeting) ? "Uredi" : "Ne može se urediti završena radionica"}
+                      title={canEditMeeting(meeting) ? "Uredi" : "Ne može se urediti uživo ili završena radionica"}
                     >
                       <EditIcon />
                     </IconButton>
@@ -410,6 +423,54 @@ const Meetings = () => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* View Dialog */}
+      <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Detalji Radionice</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            {selectedMeeting?.image && (
+              <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
+                <Avatar 
+                  src={selectedMeeting.image} 
+                  alt={selectedMeeting.title}
+                  variant="rounded"
+                  sx={{ width: 300, height: 200 }}
+                />
+              </Box>
+            )}
+
+            <Typography variant="subtitle2" gutterBottom>Naslov:</Typography>
+            <Typography variant="body1" sx={{ mb: 2 }}>{selectedMeeting?.title || '-'}</Typography>
+
+            <Typography variant="subtitle2" gutterBottom>Opis:</Typography>
+            <Paper sx={{ p: 2, mb: 2, bgcolor: 'grey.50' }}>
+              <Typography variant="body1">{selectedMeeting?.description || '-'}</Typography>
+            </Paper>
+
+            <Typography variant="subtitle2" gutterBottom>Predavač:</Typography>
+            <Typography variant="body1" sx={{ mb: 2 }}>{selectedMeeting?.speakerName || '-'}</Typography>
+
+            <Typography variant="subtitle2" gutterBottom>Biografija Predavača:</Typography>
+            <Paper sx={{ p: 2, mb: 2, bgcolor: 'grey.50' }}>
+              <Typography variant="body1">{selectedMeeting?.speakerBio || '-'}</Typography>
+            </Paper>
+
+            <Typography variant="subtitle2" gutterBottom>Planirano vrijeme:</Typography>
+            <Typography variant="body1" sx={{ mb: 2 }}>{selectedMeeting?.scheduledAt ? formatDate(selectedMeeting.scheduledAt) : '-'}</Typography>
+
+            <Typography variant="subtitle2" gutterBottom>Status:</Typography>
+            <Box sx={{ mb: 2 }}>
+              {selectedMeeting?.isLive && <Chip label="UŽIVO" color="success" size="small" />}
+              {selectedMeeting?.isActive && !selectedMeeting?.isLive && <Chip label="Aktivna" color="primary" size="small" />}
+              {!selectedMeeting?.isLive && !selectedMeeting?.isActive && <Chip label="Završena" color="default" size="small" />}
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewDialogOpen(false)}>Zatvori</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Form Dialog */}
       <Dialog open={formDialogOpen} onClose={() => setFormDialogOpen(false)} maxWidth="md" fullWidth>
@@ -459,30 +520,55 @@ const Meetings = () => {
               <Typography variant="subtitle2" gutterBottom>
                 Slika radionice (opciono)
               </Typography>
-              {imagePreview && (
-                <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Avatar 
-                    src={imagePreview} 
-                    alt="Preview"
-                    variant="rounded"
-                    sx={{ width: 120, height: 120 }}
-                  />
-                  <Button 
-                    variant="outlined" 
-                    color="error" 
-                    size="small"
-                    onClick={handleRemoveImage}
-                  >
-                    Ukloni sliku
-                  </Button>
+              
+              {/* Show existing image when editing */}
+              {isEditing && existingImage && !imagePreview && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="caption" color="text.secondary" gutterBottom>
+                    Trenutna slika:
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
+                    <Avatar 
+                      src={existingImage} 
+                      alt="Current"
+                      variant="rounded"
+                      sx={{ width: 120, height: 120 }}
+                    />
+                  </Box>
                 </Box>
               )}
+
+              {/* Show new image preview */}
+              {imagePreview && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="caption" color="text.secondary" gutterBottom>
+                    Nova slika:
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
+                    <Avatar 
+                      src={imagePreview} 
+                      alt="Preview"
+                      variant="rounded"
+                      sx={{ width: 120, height: 120 }}
+                    />
+                    <Button 
+                      variant="outlined" 
+                      color="error" 
+                      size="small"
+                      onClick={handleRemoveImage}
+                    >
+                      Ukloni novu sliku
+                    </Button>
+                  </Box>
+                </Box>
+              )}
+
               <Button
                 variant="outlined"
                 component="label"
                 startIcon={<UploadIcon />}
               >
-                {imagePreview ? 'Promijeni sliku' : 'Dodaj sliku'}
+                {imagePreview ? 'Promijeni sliku' : (isEditing && existingImage ? 'Zamijeni sliku' : 'Dodaj sliku')}
                 <input
                   type="file"
                   hidden
@@ -491,7 +577,7 @@ const Meetings = () => {
                 />
               </Button>
               <Typography variant="caption" display="block" sx={{ mt: 1, color: 'text.secondary' }}>
-                Podržani formati: JPG, PNG, GIF, WebP (max 5MB). Ako ne odaberete sliku, koristiće se default slika.
+                Podržani formati: JPG, PNG, GIF, WebP (max 5MB). Ako ne odaberete sliku, koristiće se {isEditing && existingImage ? 'trenutna' : 'default'} slika.
               </Typography>
             </Box>
 
