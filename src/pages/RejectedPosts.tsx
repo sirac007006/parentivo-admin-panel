@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
-import { CheckCircle as CheckCircleIcon, Visibility as VisibilityIcon } from '@mui/icons-material';
+import { CheckCircle as CheckCircleIcon, Visibility as VisibilityIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { ReportService } from '../services/apiService';
 
@@ -9,6 +9,7 @@ const RejectedPosts = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [acceptDialogOpen, setAcceptDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
 
@@ -34,6 +35,11 @@ const RejectedPosts = () => {
     setAcceptDialogOpen(true);
   };
 
+  const handleDeletePost = (post) => {
+    setSelectedPost(post);
+    setDeleteDialogOpen(true);
+  };
+
   const handleViewPost = (post) => {
     setSelectedPost(post);
     setViewDialogOpen(true);
@@ -48,6 +54,18 @@ const RejectedPosts = () => {
       fetchRejectedPosts();
     } catch (error: any) {
       toast.error('Greška pri prihvatanju posta: ' + error.message);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedPost) return;
+    try {
+      await ReportService.deleteForumPost(selectedPost.id);
+      toast.success('Post uspješno obrisan');
+      setDeleteDialogOpen(false);
+      fetchRejectedPosts();
+    } catch (error: any) {
+      toast.error('Greška pri brisanju posta: ' + error.message);
     }
   };
 
@@ -96,6 +114,7 @@ const RejectedPosts = () => {
                   <TableCell align="right">
                     <IconButton color="info" onClick={() => handleViewPost(post)} title="Pogledaj detalje"><VisibilityIcon /></IconButton>
                     <IconButton color="success" onClick={() => handleAcceptPost(post)} title="Prihvati post"><CheckCircleIcon /></IconButton>
+                    <IconButton color="error" onClick={() => handleDeletePost(post)} title="Obriši post"><DeleteIcon /></IconButton>
                   </TableCell>
                 </TableRow>
               ))
@@ -149,6 +168,21 @@ const RejectedPosts = () => {
         <DialogActions>
           <Button onClick={() => setAcceptDialogOpen(false)}>Otkaži</Button>
           <Button onClick={handleConfirmAccept} variant="contained" color="success">Prihvati Post</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>Potvrda Brisanja Posta</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Da li ste sigurni da želite trajno obrisati post <strong>"{selectedPost?.title}"</strong>? 
+            Ova akcija je nepovratna.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Otkaži</Button>
+          <Button onClick={handleConfirmDelete} variant="contained" color="error">Obriši Post</Button>
         </DialogActions>
       </Dialog>
     </Box>

@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
-import { CheckCircle as CheckCircleIcon, Visibility as VisibilityIcon } from '@mui/icons-material';
+import { CheckCircle as CheckCircleIcon, Visibility as VisibilityIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { ReportService } from '../services/apiService';
 
@@ -9,6 +9,7 @@ const RejectedComments = () => {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [acceptDialogOpen, setAcceptDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedComment, setSelectedComment] = useState(null);
 
@@ -34,6 +35,11 @@ const RejectedComments = () => {
     setAcceptDialogOpen(true);
   };
 
+  const handleDeleteComment = (comment) => {
+    setSelectedComment(comment);
+    setDeleteDialogOpen(true);
+  };
+
   const handleViewComment = (comment) => {
     setSelectedComment(comment);
     setViewDialogOpen(true);
@@ -48,6 +54,18 @@ const RejectedComments = () => {
       fetchRejectedComments();
     } catch (error: any) {
       toast.error('Greška pri prihvatanju komentara: ' + error.message);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedComment) return;
+    try {
+      await ReportService.deleteForumComment(selectedComment.id);
+      toast.success('Komentar uspješno obrisan');
+      setDeleteDialogOpen(false);
+      fetchRejectedComments();
+    } catch (error: any) {
+      toast.error('Greška pri brisanju komentara: ' + error.message);
     }
   };
 
@@ -94,6 +112,7 @@ const RejectedComments = () => {
                   <TableCell align="right">
                     <IconButton color="info" onClick={() => handleViewComment(comment)} title="Pogledaj detalje"><VisibilityIcon /></IconButton>
                     <IconButton color="success" onClick={() => handleAcceptComment(comment)} title="Prihvati komentar"><CheckCircleIcon /></IconButton>
+                    <IconButton color="error" onClick={() => handleDeleteComment(comment)} title="Obriši komentar"><DeleteIcon /></IconButton>
                   </TableCell>
                 </TableRow>
               ))
@@ -146,6 +165,21 @@ const RejectedComments = () => {
         <DialogActions>
           <Button onClick={() => setAcceptDialogOpen(false)}>Otkaži</Button>
           <Button onClick={handleConfirmAccept} variant="contained" color="success">Prihvati Komentar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>Potvrda Brisanja Komentara</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Da li ste sigurni da želite trajno obrisati ovaj komentar? 
+            Ova akcija je nepovratna.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Otkaži</Button>
+          <Button onClick={handleConfirmDelete} variant="contained" color="error">Obriši Komentar</Button>
         </DialogActions>
       </Dialog>
     </Box>
