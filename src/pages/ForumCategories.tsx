@@ -196,19 +196,20 @@ const ForumCategories: React.FC = () => {
             <TableRow>
               <TableCell>ID</TableCell>
               <TableCell>Naziv</TableCell>
+              <TableCell>Opis</TableCell>
               <TableCell align="right">Akcije</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={3} align="center">
+                <TableCell colSpan={4} align="center">
                   Učitavanje...
                 </TableCell>
               </TableRow>
             ) : categories.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={3} align="center">
+                <TableCell colSpan={4} align="center">
                   Nema kategorija
                 </TableCell>
               </TableRow>
@@ -217,6 +218,7 @@ const ForumCategories: React.FC = () => {
                 <TableRow key={category.id}>
                   <TableCell>{category.id}</TableCell>
                   <TableCell>{category.name}</TableCell>
+                  <TableCell>{category.description || '-'}</TableCell>
                   <TableCell align="right">
                     <IconButton
                       color="primary"

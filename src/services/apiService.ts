@@ -284,6 +284,15 @@ export const ReportService = {
     return response.data;
   },
 
+  // PATCH /forum-post/change-status/{postId} - Prihvati post (promeni status u ACCEPTED)
+  changePostStatus: async (postId: string, status: string) => {
+    const response = await apiClient.patch(
+      `/forum-post/change-status/${postId}`,
+      { status }
+    );
+    return response.data;
+  },
+
   // GET /report/comments
   getReportedComments: async (params?: {
     userId?: string;
@@ -317,6 +326,15 @@ export const ReportService = {
     const response = await apiClient.patch(
       `/forum-comment/change-status/${commentId}`,
       { status: 'REJECTED' }
+    );
+    return response.data;
+  },
+
+  // PATCH /forum-comment/change-status/{commentId} - Prihvati komentar (promeni status u ACCEPTED)
+  changeCommentStatus: async (commentId: string, status: string) => {
+    const response = await apiClient.patch(
+      `/forum-comment/change-status/${commentId}`,
+      { status }
     );
     return response.data;
   },

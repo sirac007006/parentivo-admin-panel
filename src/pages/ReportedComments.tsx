@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Typography, Grid, Chip } from '@mui/material';
-import { Delete as DeleteIcon, Warning as WarningIcon, Refresh as RefreshIcon } from '@mui/icons-material';
+import { Delete as DeleteIcon, Refresh as RefreshIcon, Visibility as VisibilityIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { ReportService, ReportedComment } from '../services/apiService';
 
@@ -12,7 +12,7 @@ const ReportedComments: React.FC = () => {
   const [commentIdFilter, setCommentIdFilter] = useState('');
   const [deleteReportDialogOpen, setDeleteReportDialogOpen] = useState(false);
   const [deleteCommentDialogOpen, setDeleteCommentDialogOpen] = useState(false);
-  const [rejectCommentDialogOpen, setRejectCommentDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<ReportedComment | null>(null);
 
   const fetchReports = async () => {
@@ -52,9 +52,9 @@ const ReportedComments: React.FC = () => {
     setDeleteCommentDialogOpen(true);
   };
 
-  const handleRejectComment = (report: ReportedComment) => {
+  const handleViewComment = (report: ReportedComment) => {
     setSelectedReport(report);
-    setRejectCommentDialogOpen(true);
+    setViewDialogOpen(true);
   };
 
   const handleConfirmDeleteReport = async () => {
@@ -81,16 +81,10 @@ const ReportedComments: React.FC = () => {
     }
   };
 
-  const handleConfirmRejectComment = async () => {
-    if (!selectedReport) return;
-    try {
-      await ReportService.rejectComment(selectedReport.commentId);
-      toast.success('Komentar uspješno odbijen');
-      setRejectCommentDialogOpen(false);
-      fetchReports();
-    } catch (error: any) {
-      toast.error('Greška pri odbijanju komentara: ' + error.message);
-    }
+  const truncateText = (text: string, maxLength: number = 50) => {
+    if (!text) return '-';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
   };
 
   return (
@@ -118,8 +112,10 @@ const ReportedComments: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Korisnik</TableCell>
+              <TableCell>Prijavio</TableCell>
               <TableCell>Comment ID</TableCell>
+              <TableCell>Autor Komentara</TableCell>
+              <TableCell>Sadržaj</TableCell>
               <TableCell>Razlog</TableCell>
               <TableCell>Datum prijave</TableCell>
               <TableCell align="right">Akcije</TableCell>
@@ -127,18 +123,20 @@ const ReportedComments: React.FC = () => {
           </TableHead>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={5} align="center">Učitavanje...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} align="center">Učitavanje...</TableCell></TableRow>
             ) : reports.length === 0 ? (
-              <TableRow><TableCell colSpan={5} align="center">Nema prijavljenih komentara</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} align="center">Nema prijavljenih komentara</TableCell></TableRow>
             ) : (
               reports.map((report) => (
                 <TableRow key={report.id}>
                   <TableCell>{report.user?.fullName || report.userId}</TableCell>
                   <TableCell><Chip label={report.commentId} size="small" /></TableCell>
+                  <TableCell>{report.forumComment?.user?.fullName || '-'}</TableCell>
+                  <TableCell>{truncateText(report.forumComment?.content)}</TableCell>
                   <TableCell>{report.reason || '-'}</TableCell>
                   <TableCell>{new Date(report.createdAt).toLocaleString()}</TableCell>
                   <TableCell align="right">
-                    <IconButton color="warning" onClick={() => handleRejectComment(report)} title="Odbij komentar"><WarningIcon /></IconButton>
+                    <IconButton color="info" onClick={() => handleViewComment(report)} title="Pogledaj detalje"><VisibilityIcon /></IconButton>
                     <IconButton color="primary" onClick={() => handleDeleteReport(report)} title="Obriši prijavu"><DeleteIcon /></IconButton>
                     <IconButton color="error" onClick={() => handleDeleteComment(report)} title="Obriši komentar"><DeleteIcon /></IconButton>
                   </TableCell>
@@ -148,6 +146,34 @@ const ReportedComments: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* View Dialog */}
+      <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Detalji Prijavljenog Komentara</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Typography variant="subtitle2" gutterBottom>Prijavio:</Typography>
+            <Typography variant="body1" sx={{ mb: 2 }}>{selectedReport?.user?.fullName || '-'}</Typography>
+
+            <Typography variant="subtitle2" gutterBottom>Autor Komentara:</Typography>
+            <Typography variant="body1" sx={{ mb: 2 }}>{selectedReport?.forumComment?.user?.fullName || '-'}</Typography>
+
+            <Typography variant="subtitle2" gutterBottom>Sadržaj Komentara:</Typography>
+            <Paper sx={{ p: 2, mb: 2, bgcolor: 'grey.50' }}>
+              <Typography variant="body1">{selectedReport?.forumComment?.content || '-'}</Typography>
+            </Paper>
+
+            <Typography variant="subtitle2" gutterBottom>Razlog Prijave:</Typography>
+            <Typography variant="body1" sx={{ mb: 2 }}>{selectedReport?.reason || '-'}</Typography>
+
+            <Typography variant="subtitle2" gutterBottom>Datum Prijave:</Typography>
+            <Typography variant="body1">{selectedReport?.createdAt ? new Date(selectedReport.createdAt).toLocaleString() : '-'}</Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewDialogOpen(false)}>Zatvori</Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={deleteReportDialogOpen} onClose={() => setDeleteReportDialogOpen(false)}>
         <DialogTitle>Potvrda Brisanja Prijave</DialogTitle>
@@ -164,15 +190,6 @@ const ReportedComments: React.FC = () => {
         <DialogActions>
           <Button onClick={() => setDeleteCommentDialogOpen(false)}>Otkaži</Button>
           <Button onClick={handleConfirmDeleteComment} variant="contained" color="error">Obriši Komentar</Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={rejectCommentDialogOpen} onClose={() => setRejectCommentDialogOpen(false)}>
-        <DialogTitle>Potvrda Odbijanja Komentara</DialogTitle>
-        <DialogContent><Typography>Da li ste sigurni da želite odbiti ovaj komentar? Komentar će biti premješten u odbijene komentare.</Typography></DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRejectCommentDialogOpen(false)}>Otkaži</Button>
-          <Button onClick={handleConfirmRejectComment} variant="contained" color="warning">Odbij Komentar</Button>
         </DialogActions>
       </Dialog>
     </Box>

@@ -37,7 +37,6 @@ const Specializations: React.FC = () => {
   const [selectedSpecialization, setSelectedSpecialization] = useState<Specialization | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [formName, setFormName] = useState('');
-  const [formDescription, setFormDescription] = useState('');
 
   const fetchSpecializations = async () => {
     setLoading(true);
@@ -68,7 +67,6 @@ const Specializations: React.FC = () => {
     setIsEditing(false);
     setSelectedSpecialization(null);
     setFormName('');
-    setFormDescription('');
     setFormDialogOpen(true);
   };
 
@@ -76,7 +74,6 @@ const Specializations: React.FC = () => {
     setIsEditing(true);
     setSelectedSpecialization(specialization);
     setFormName(specialization.name);
-    setFormDescription(specialization.description || '');
     setFormDialogOpen(true);
   };
 
@@ -89,13 +86,11 @@ const Specializations: React.FC = () => {
       if (isEditing && selectedSpecialization) {
         await SpecializationService.updateSpecialization(selectedSpecialization.id, {
           name: formName,
-          description: formDescription,
         });
         toast.success('Specijalizacija uspješno ažurirana');
       } else {
         await SpecializationService.createSpecialization({
           name: formName,
-          description: formDescription,
         });
         toast.success('Specijalizacija uspješno kreirana');
       }
@@ -195,7 +190,6 @@ const Specializations: React.FC = () => {
         <DialogContent>
           <Box sx={{ pt: 2 }}>
             <TextField fullWidth label="Naziv *" value={formName} onChange={(e) => setFormName(e.target.value)} sx={{ mb: 2 }} />
-            <TextField fullWidth label="Opis" value={formDescription} onChange={(e) => setFormDescription(e.target.value)} multiline rows={3} />
           </Box>
         </DialogContent>
         <DialogActions>

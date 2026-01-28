@@ -151,7 +151,6 @@ const HelpDeskSlots = () => {
               <TableCell>Max Djece</TableCell>
               <TableCell>Početak</TableCell>
               <TableCell>Kraj</TableCell>
-              <TableCell>Kreiran</TableCell>
               <TableCell align="right">Akcije</TableCell>
             </TableRow>
           </TableHead>
@@ -170,7 +169,6 @@ const HelpDeskSlots = () => {
                   <TableCell><Chip label={slot.maxChildren} color="primary" size="small" /></TableCell>
                   <TableCell>{slot.startAt ? new Date(slot.startAt).toLocaleString('sr-RS') : 'Invalid Date'}</TableCell>
                   <TableCell>{slot.endAt ? new Date(slot.endAt).toLocaleString('sr-RS') : 'Invalid Date'}</TableCell>
-                  <TableCell>{slot.createdAt ? new Date(slot.createdAt).toLocaleDateString('sr-RS') : '-'}</TableCell>
                   <TableCell align="right">
                     <IconButton color="primary" onClick={() => handleOpenEditDialog(slot)}>
                       <EditIcon />

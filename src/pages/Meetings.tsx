@@ -19,10 +19,7 @@ import {
   Typography,
   Grid,
   Chip,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
+  Avatar,
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
@@ -31,6 +28,7 @@ import {
   PlayArrow as StartIcon,
   Stop as StopIcon,
   Refresh as RefreshIcon,
+  CloudUpload as UploadIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { apiClient } from '../services/authService';
@@ -53,8 +51,19 @@ const Meetings = () => {
   const [formSpeakerName, setFormSpeakerName] = useState('');
   const [formSpeakerBio, setFormSpeakerBio] = useState('');
   const [formScheduledAt, setFormScheduledAt] = useState('');
-  const [formIsLive, setFormIsLive] = useState('false');
-  const [formIsActive, setFormIsActive] = useState('false');
+  const [formImage, setFormImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+
+  // Get minimum datetime (current time)
+  const getMinDateTime = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
 
   const fetchMeetings = async () => {
     setLoading(true);
@@ -84,6 +93,37 @@ const Meetings = () => {
     fetchMeetings();
   };
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error('Molimo odaberite sliku (jpg, png, gif, webp)');
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Slika ne smije biti veća od 5MB');
+        return;
+      }
+
+      setFormImage(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setFormImage(null);
+    setImagePreview(null);
+  };
+
   const handleOpenCreateDialog = () => {
     setIsEditing(false);
     setSelectedMeeting(null);
@@ -92,20 +132,26 @@ const Meetings = () => {
     setFormSpeakerName('');
     setFormSpeakerBio('');
     setFormScheduledAt('');
-    setFormIsLive('false');
-    setFormIsActive('false');
+    setFormImage(null);
+    setImagePreview(null);
     setFormDialogOpen(true);
   };
 
   const handleOpenEditDialog = (meeting) => {
+    // Provjeri da li je sastanak završen (nije aktivan i nije uživo)
+    if (!meeting.isActive && !meeting.isLive) {
+      toast.warning('Ne možete urediti završenu/neaktivnu radionicu');
+      return;
+    }
+
     setIsEditing(true);
     setSelectedMeeting(meeting);
     setFormTitle(meeting.title || '');
     setFormDescription(meeting.description || '');
     setFormSpeakerName(meeting.speakerName || '');
     setFormSpeakerBio(meeting.speakerBio || '');
-    setFormIsLive(meeting.isLive ? 'true' : 'false');
-    setFormIsActive(meeting.isActive ? 'true' : 'false');
+    setFormImage(null);
+    setImagePreview(meeting.image || null);
 
     // Defensively handle scheduledAt date
     if (meeting.scheduledAt && meeting.scheduledAt !== 'Invalid Date') {
@@ -138,24 +184,41 @@ const Meetings = () => {
       return;
     }
 
-    const payload = {
-      title: formTitle,
-      description: formDescription || '',
-      speakerName: formSpeakerName,
-      speakerBio: formSpeakerBio || '',
-      scheduledAt: scheduledDate.toISOString(),
-      isLive: formIsLive === 'true',
-      isActive: formIsActive === 'true',
-    };
+    // Validate that scheduled date is not in the past
+    const now = new Date();
+    if (scheduledDate < now) {
+      toast.error('Radionica ne može biti zakazana u prošlosti');
+      return;
+    }
+
+    // Create FormData for multipart/form-data
+    const formData = new FormData();
+    formData.append('title', formTitle);
+    formData.append('description', formDescription || '');
+    formData.append('speakerName', formSpeakerName);
+    formData.append('speakerBio', formSpeakerBio || '');
+    formData.append('scheduledAt', scheduledDate.toISOString());
+    
+    if (formImage) {
+      formData.append('image', formImage);
+    }
 
     try {
       if (isEditing && selectedMeeting) {
         // PATCH /meetings/{id}
-        await apiClient.patch(`/meetings/${selectedMeeting.id}`, payload);
+        await apiClient.patch(`/meetings/${selectedMeeting.id}`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
         toast.success('Radionica uspješno ažurirana');
       } else {
         // POST /meetings
-        await apiClient.post('/meetings', payload);
+        await apiClient.post('/meetings', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
         toast.success('Radionica uspješno kreirana');
       }
       setFormDialogOpen(false);
@@ -227,6 +290,11 @@ const Meetings = () => {
     }
   };
 
+  // Helper function to check if meeting can be edited
+  const canEditMeeting = (meeting) => {
+    return meeting.isActive || meeting.isLive;
+  };
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -275,6 +343,7 @@ const Meetings = () => {
         <Table>
           <TableHead>
             <TableRow>
+              <TableCell>Slika</TableCell>
               <TableCell>Naslov</TableCell>
               <TableCell>Predavač</TableCell>
               <TableCell>Planirano</TableCell>
@@ -285,23 +354,31 @@ const Meetings = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} align="center">Učitavanje...</TableCell>
+                <TableCell colSpan={6} align="center">Učitavanje...</TableCell>
               </TableRow>
             ) : meetings.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} align="center">Nema radionica</TableCell>
+                <TableCell colSpan={6} align="center">Nema radionica</TableCell>
               </TableRow>
             ) : (
               meetings.map((meeting) => (
                 <TableRow key={meeting.id}>
+                  <TableCell>
+                    <Avatar 
+                      src={meeting.image} 
+                      alt={meeting.title}
+                      variant="rounded"
+                      sx={{ width: 60, height: 60 }}
+                    />
+                  </TableCell>
                   <TableCell>{meeting.title}</TableCell>
                   <TableCell>{meeting.speakerName}</TableCell>
                   <TableCell>{formatDate(meeting.scheduledAt)}</TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1 }}>
-                      {meeting.isLive && <Chip label="LIVE" color="success" size="small" />}
-                      {meeting.isActive && <Chip label="Active" color="primary" size="small" />}
-                      {!meeting.isLive && !meeting.isActive && <Chip label="Inactive" size="small" />}
+                      {meeting.isLive && <Chip label="UŽIVO" color="success" size="small" />}
+                      {meeting.isActive && <Chip label="Aktivna" color="primary" size="small" />}
+                      {!meeting.isLive && !meeting.isActive && <Chip label="Završena" color="default" size="small" />}
                     </Box>
                   </TableCell>
                   <TableCell align="right">
@@ -315,7 +392,12 @@ const Meetings = () => {
                         <StopIcon />
                       </IconButton>
                     )}
-                    <IconButton color="primary" onClick={() => handleOpenEditDialog(meeting)}>
+                    <IconButton 
+                      color="primary" 
+                      onClick={() => handleOpenEditDialog(meeting)}
+                      disabled={!canEditMeeting(meeting)}
+                      title={canEditMeeting(meeting) ? "Uredi" : "Ne može se urediti završena radionica"}
+                    >
                       <EditIcon />
                     </IconButton>
                     <IconButton color="error" onClick={() => handleDeleteMeeting(meeting)}>
@@ -369,21 +451,54 @@ const Meetings = () => {
               value={formScheduledAt}
               onChange={(e) => setFormScheduledAt(e.target.value)}
               InputLabelProps={{ shrink: true }}
+              inputProps={{ min: getMinDateTime() }}
             />
-            <FormControl fullWidth>
-              <InputLabel>Stanje radionice</InputLabel>
-              <Select value={formIsLive} onChange={(e) => setFormIsLive(e.target.value)} label="Stanje radionice">
-                <MenuItem value="false">Nije uživo</MenuItem>
-                <MenuItem value="true">Uživo</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl fullWidth>
-              <InputLabel>Vidljivost radionice</InputLabel>
-              <Select value={formIsActive} onChange={(e) => setFormIsActive(e.target.value)} label="Vidljivost radionice">
-                <MenuItem value="false">Neaktivna</MenuItem>
-                <MenuItem value="true">Aktivna</MenuItem>
-              </Select>
-            </FormControl>
+
+            {/* Image Upload */}
+            <Box>
+              <Typography variant="subtitle2" gutterBottom>
+                Slika radionice (opciono)
+              </Typography>
+              {imagePreview && (
+                <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Avatar 
+                    src={imagePreview} 
+                    alt="Preview"
+                    variant="rounded"
+                    sx={{ width: 120, height: 120 }}
+                  />
+                  <Button 
+                    variant="outlined" 
+                    color="error" 
+                    size="small"
+                    onClick={handleRemoveImage}
+                  >
+                    Ukloni sliku
+                  </Button>
+                </Box>
+              )}
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={<UploadIcon />}
+              >
+                {imagePreview ? 'Promijeni sliku' : 'Dodaj sliku'}
+                <input
+                  type="file"
+                  hidden
+                  accept="image/*"
+                  onChange={handleImageChange}
+                />
+              </Button>
+              <Typography variant="caption" display="block" sx={{ mt: 1, color: 'text.secondary' }}>
+                Podržani formati: JPG, PNG, GIF, WebP (max 5MB). Ako ne odaberete sliku, koristiće se default slika.
+              </Typography>
+            </Box>
+
+            <Typography variant="body2" color="text.secondary">
+              * Status radionice (uživo/aktivna) se automatski postavlja od strane sistema. 
+              Koristite dugmad "Pokreni" i "Završi" za upravljanje statusom radionice.
+            </Typography>
           </Box>
         </DialogContent>
         <DialogActions>
