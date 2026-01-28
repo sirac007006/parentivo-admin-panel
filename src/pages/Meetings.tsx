@@ -156,7 +156,7 @@ const Meetings = () => {
     setFormSpeakerBio(meeting.speakerBio || '');
     setFormImage(null);
     setImagePreview(null);
-    setExistingImage(meeting.image || null);
+    setExistingImage(meeting.thumbnailUrl || null);
 
     // Defensively handle scheduledAt date
     if (meeting.scheduledAt && meeting.scheduledAt !== 'Invalid Date') {
@@ -375,7 +375,7 @@ const Meetings = () => {
                 <TableRow key={meeting.id}>
                   <TableCell>
                     <Avatar 
-                      src={meeting.image} 
+                      src={meeting.thumbnailUrl} 
                       alt={meeting.title}
                       variant="rounded"
                       sx={{ width: 60, height: 60 }}
@@ -429,13 +429,13 @@ const Meetings = () => {
         <DialogTitle>Detalji Radionice</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2 }}>
-            {selectedMeeting?.image && (
+            {selectedMeeting?.thumbnailUrl && (
               <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
                 <Avatar 
-                  src={selectedMeeting.image} 
+                  src={selectedMeeting.thumbnailUrl} 
                   alt={selectedMeeting.title}
                   variant="rounded"
-                  sx={{ width: 300, height: 200 }}
+                  sx={{ width: '100%', maxWidth: 500, height: 300 }}
                 />
               </Box>
             )}
