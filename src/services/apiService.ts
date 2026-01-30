@@ -54,8 +54,8 @@ export interface ReportedComment {
 export interface HelpDeskSlot {
   id: string;
   maxChildren: number;
-  startFrom: string;
-  startTo: string;
+  startAt: string;
+  endAt: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -64,8 +64,8 @@ export interface Slot {
   id: string;
   doctorId: string;
   isBooked: boolean;
-  startFrom: string;
-  startTo: string;
+  startAt: string;
+  endAt: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -78,8 +78,8 @@ export interface Meeting {
   creatorId: string;
   isLive: boolean;
   isActive: boolean;
-  startFrom: string;
-  startTo: string;
+  startAt: string;
+  endAt: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -374,8 +374,8 @@ export const HelpDeskSlotService = {
   // GET /help-desk-slots
   getHelpDeskSlots: async (params?: {
     maxChildren?: number;
-    startFrom?: string;
-    startTo?: string;
+    startAt?: string;
+    endAt?: string;
   }) => {
     const response = await apiClient.get<HelpDeskSlot[]>(
       API_ENDPOINTS.HELP_DESK_SLOTS,
@@ -395,8 +395,8 @@ export const HelpDeskSlotService = {
   // POST /help-desk-slots
   createHelpDeskSlot: async (data: {
     maxChildren: number;
-    startFrom: string;
-    startTo: string;
+    startAt: string;
+    endAt: string;
   }) => {
     const response = await apiClient.post<HelpDeskSlot>(
       API_ENDPOINTS.HELP_DESK_SLOTS,
@@ -410,8 +410,8 @@ export const HelpDeskSlotService = {
     slotId: string,
     data: {
       maxChildren?: number;
-      startFrom?: string;
-      startTo?: string;
+      startAt?: string;
+      endAt?: string;
     }
   ) => {
     const response = await apiClient.patch<HelpDeskSlot>(
@@ -442,7 +442,7 @@ export const SlotService = {
   // GET /slots/doctor/{id}
   getSlotsByDoctor: async (
     doctorId: string,
-    params?: { isBooked?: boolean; startFrom?: string; startTo?: string }
+    params?: { isBooked?: boolean; startAt?: string; endAt?: string }
   ) => {
     const response = await apiClient.get<Slot[]>(
       `${API_ENDPOINTS.SLOTS_DOCTOR}/${doctorId}`,
@@ -452,7 +452,7 @@ export const SlotService = {
   },
 
   // POST /slots
-  createSlot: async (data: { startFrom: string; startTo: string }) => {
+  createSlot: async (data: { startAt: string; endAt: string }) => {
     const response = await apiClient.post<Slot>(API_ENDPOINTS.SLOTS, data);
     return response.data;
   },
@@ -460,7 +460,7 @@ export const SlotService = {
   // PATCH /slots/{id}
   updateSlot: async (
     slotId: string,
-    data: { startFrom?: string; startTo?: string }
+    data: { startAt?: string; endAt?: string }
   ) => {
     const response = await apiClient.patch<Slot>(
       `${API_ENDPOINTS.SLOT_BY_ID}/${slotId}`,
@@ -488,8 +488,8 @@ export const MeetingService = {
     creatorId?: string;
     isLive?: boolean;
     isActive?: boolean;
-    startFrom?: string;
-    startTo?: string;
+    startAt?: string;
+    endAt?: string;
   }) => {
     const response = await apiClient.get<Meeting[]>(
       API_ENDPOINTS.MEETINGS_ADMIN,
@@ -517,8 +517,8 @@ export const MeetingService = {
     title: string;
     description?: string;
     speakerName: string;
-    startFrom: string;
-    startTo: string;
+    startAt: string;
+    endAt: string;
   }) => {
     const response = await apiClient.post<Meeting>(
       API_ENDPOINTS.MEETINGS,
@@ -534,8 +534,8 @@ export const MeetingService = {
       title?: string;
       description?: string;
       speakerName?: string;
-      startFrom?: string;
-      startTo?: string;
+      startAt?: string;
+      endAt?: string;
     }
   ) => {
     const response = await apiClient.patch<Meeting>(

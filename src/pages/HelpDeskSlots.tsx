@@ -67,11 +67,49 @@ const HelpDeskSlots = () => {
   };
 
   const handleOpenEditDialog = (slot) => {
+    // Provjeri da li termin ima rezervacija
+    const bookingsCount = getBookingsCount(slot);
+    if (bookingsCount > 0) {
+      toast.warning('Ne možete urediti termin koji ima zauzeta mjesta');
+      return;
+    }
+
     setIsEditing(true);
     setSelectedSlot(slot);
     setFormMaxChildren(slot.maxChildren || 10);
-    setFormStartAt(slot.startAt ? slot.startAt.substring(0, 16) : '');
-    setFormEndAt(slot.endAt ? slot.endAt.substring(0, 16) : '');
+    
+    // Handle startAt (MALO SLOVO!)
+    if (slot.startAt) {
+      try {
+        const date = new Date(slot.startAt);
+        if (!isNaN(date.getTime())) {
+          setFormStartAt(date.toISOString().slice(0, 16));
+        } else {
+          setFormStartAt('');
+        }
+      } catch (e) {
+        setFormStartAt('');
+      }
+    } else {
+      setFormStartAt('');
+    }
+
+    // Handle endAt (MALO SLOVO!)
+    if (slot.endAt) {
+      try {
+        const date = new Date(slot.endAt);
+        if (!isNaN(date.getTime())) {
+          setFormEndAt(date.toISOString().slice(0, 16));
+        } else {
+          setFormEndAt('');
+        }
+      } catch (e) {
+        setFormEndAt('');
+      }
+    } else {
+      setFormEndAt('');
+    }
+
     setFormDialogOpen(true);
   };
 
@@ -84,27 +122,37 @@ const HelpDeskSlots = () => {
     const startDate = new Date(formStartAt);
     const endDate = new Date(formEndAt);
 
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      toast.error('Nevažeći datum');
+      return;
+    }
+
     if (startDate >= endDate) {
       toast.error('Kraj termina mora biti poslije početka');
       return;
     }
 
+    // Validate that dates are not in the past
+    const now = new Date();
+    if (startDate < now) {
+      toast.error('Termin ne može biti u prošlosti');
+      return;
+    }
+
+    const payload = {
+      maxChildren: formMaxChildren,
+      startAt: startDate.toISOString(),  // MALO SLOVO!
+      endAt: endDate.toISOString(),      // MALO SLOVO!
+    };
+
     try {
       if (isEditing && selectedSlot) {
         // PATCH /help-desk-slots/{id}
-        await apiClient.patch(`/help-desk-slots/${selectedSlot.id}`, {
-          maxChildren: formMaxChildren,
-          startAt: startDate.toISOString(),
-          endAt: endDate.toISOString(),
-        });
+        await apiClient.patch(`/help-desk-slots/${selectedSlot.id}`, payload);
         toast.success('Termin uspješno ažuriran');
       } else {
         // POST /help-desk-slots
-        await apiClient.post('/help-desk-slots', {
-          maxChildren: formMaxChildren,
-          startAt: startDate.toISOString(),
-          endAt: endDate.toISOString(),
-        });
+        await apiClient.post('/help-desk-slots', payload);
         toast.success('Termin uspješno kreiran');
       }
       setFormDialogOpen(false);
@@ -131,6 +179,41 @@ const HelpDeskSlots = () => {
     }
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Invalid Date';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Invalid Date';
+      return date.toLocaleString('sr-RS');
+    } catch (e) {
+      return 'Invalid Date';
+    }
+  };
+
+  // Get minimum datetime (current time)
+  const getMinDateTime = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const getBookingsCount = (slot) => {
+    return slot.helpDeskBookings?.length || 0;
+  };
+
+  const getAvailableSpots = (slot) => {
+    const bookings = getBookingsCount(slot);
+    return slot.maxChildren - bookings;
+  };
+
+  const canEditSlot = (slot) => {
+    return getBookingsCount(slot) === 0;
+  };
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -149,6 +232,8 @@ const HelpDeskSlots = () => {
           <TableHead>
             <TableRow>
               <TableCell>Max Djece</TableCell>
+              <TableCell>Rezervacije</TableCell>
+              <TableCell>Slobodno</TableCell>
               <TableCell>Početak</TableCell>
               <TableCell>Kraj</TableCell>
               <TableCell align="right">Akcije</TableCell>
@@ -157,28 +242,54 @@ const HelpDeskSlots = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} align="center">Učitavanje...</TableCell>
+                <TableCell colSpan={6} align="center">Učitavanje...</TableCell>
               </TableRow>
             ) : slots.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} align="center">Nema termina</TableCell>
+                <TableCell colSpan={6} align="center">Nema termina</TableCell>
               </TableRow>
             ) : (
-              slots.map((slot) => (
-                <TableRow key={slot.id}>
-                  <TableCell><Chip label={slot.maxChildren} color="primary" size="small" /></TableCell>
-                  <TableCell>{slot.startAt ? new Date(slot.startAt).toLocaleString('sr-RS') : 'Invalid Date'}</TableCell>
-                  <TableCell>{slot.endAt ? new Date(slot.endAt).toLocaleString('sr-RS') : 'Invalid Date'}</TableCell>
-                  <TableCell align="right">
-                    <IconButton color="primary" onClick={() => handleOpenEditDialog(slot)}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton color="error" onClick={() => handleDeleteSlot(slot)}>
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))
+              slots.map((slot) => {
+                const bookingsCount = getBookingsCount(slot);
+                const availableSpots = getAvailableSpots(slot);
+                const isFull = availableSpots === 0;
+                const canEdit = canEditSlot(slot);
+
+                return (
+                  <TableRow key={slot.id}>
+                    <TableCell><Chip label={slot.maxChildren} color="primary" size="small" /></TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={bookingsCount} 
+                        color={bookingsCount > 0 ? "success" : "default"} 
+                        size="small" 
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={availableSpots} 
+                        color={isFull ? "error" : "success"} 
+                        size="small" 
+                      />
+                    </TableCell>
+                    <TableCell>{formatDate(slot.startAt)}</TableCell>
+                    <TableCell>{formatDate(slot.endAt)}</TableCell>
+                    <TableCell align="right">
+                      <IconButton 
+                        color="primary" 
+                        onClick={() => handleOpenEditDialog(slot)}
+                        disabled={!canEdit}
+                        title={canEdit ? "Uredi" : "Ne može se urediti termin sa rezervacijama"}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton color="error" onClick={() => handleDeleteSlot(slot)}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -204,6 +315,7 @@ const HelpDeskSlots = () => {
               value={formStartAt}
               onChange={(e) => setFormStartAt(e.target.value)}
               InputLabelProps={{ shrink: true }}
+              inputProps={{ min: getMinDateTime() }}
             />
             <TextField
               fullWidth
@@ -212,6 +324,7 @@ const HelpDeskSlots = () => {
               value={formEndAt}
               onChange={(e) => setFormEndAt(e.target.value)}
               InputLabelProps={{ shrink: true }}
+              inputProps={{ min: getMinDateTime() }}
             />
           </Box>
         </DialogContent>
@@ -226,6 +339,11 @@ const HelpDeskSlots = () => {
         <DialogTitle>Potvrda Brisanja</DialogTitle>
         <DialogContent>
           <Typography>Da li ste sigurni da želite obrisati ovaj termin?</Typography>
+          {selectedSlot && getBookingsCount(selectedSlot) > 0 && (
+            <Typography color="error" sx={{ mt: 1 }}>
+              Upozorenje: Ovaj termin ima {getBookingsCount(selectedSlot)} aktivnih rezervacija!
+            </Typography>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteDialogOpen(false)}>Otkaži</Button>
