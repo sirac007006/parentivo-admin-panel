@@ -60,6 +60,7 @@ export interface HelpDeskSlot {
   updatedAt: string;
 }
 
+// UPDATED: Slot interface now includes appointment object
 export interface Slot {
   id: string;
   doctorId: string;
@@ -68,6 +69,14 @@ export interface Slot {
   endAt: string;
   createdAt: string;
   updatedAt: string;
+  appointment?: {
+    id: string;
+    userId: string;
+    slotId: string;
+    createdAt: string;
+    updatedAt: string;
+    user?: User;
+  };
 }
 
 export interface Meeting {
