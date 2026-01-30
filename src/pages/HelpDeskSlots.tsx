@@ -56,6 +56,13 @@ const HelpDeskSlots = () => {
     try {
       const response = await apiClient.get('/help-desk-slots');
       console.log('📦 Fetched slots:', response.data);
+      
+      // Log bookings count for each slot
+      response.data.forEach(slot => {
+        const bookingsCount = slot.helpDeskBookings?.length || 0;
+        console.log(`Slot ${slot.id}: ${bookingsCount} bookings`, slot.helpDeskBookings);
+      });
+      
       setSlots(response.data);
     } catch (error: any) {
       console.error('❌ Error fetching slots:', error);
@@ -198,20 +205,62 @@ const HelpDeskSlots = () => {
   const handleViewBookings = async (slot) => {
     setSelectedSlot(slot);
     
-    // Bookings are already in slot.helpDeskBookings
-    if (slot.helpDeskBookings && slot.helpDeskBookings.length > 0) {
-      setSelectedSlotBookings(slot.helpDeskBookings);
-      setBookingsDialogOpen(true);
-    } else {
-      toast.info('Nema rezervacija za ovaj termin');
+    try {
+      // Fetch detailed bookings from API
+      console.log('📥 Fetching bookings for slot:', slot.id);
+      const response = await apiClient.get(`/help-desk-booking/slot/${slot.id}`);
+      console.log('✅ Bookings response:', response.data);
+      
+      if (response.data && response.data.length > 0) {
+        setSelectedSlotBookings(response.data);
+        setBookingsDialogOpen(true);
+      } else {
+        toast.info('Nema rezervacija za ovaj termin');
+      }
+    } catch (error: any) {
+      console.error('❌ Error fetching bookings:', error);
+      
+      // Fallback to slot.helpDeskBookings if API fails
+      if (slot.helpDeskBookings && slot.helpDeskBookings.length > 0) {
+        setSelectedSlotBookings(slot.helpDeskBookings);
+        setBookingsDialogOpen(true);
+      } else {
+        toast.error('Greška pri učitavanju rezervacija: ' + (error.response?.data?.message || error.message));
+      }
     }
   };
 
-  const toggleRow = (slotId) => {
+  const toggleRow = async (slotId) => {
+    const isCurrentlyExpanded = expandedRows[slotId];
+    
     setExpandedRows(prev => ({
       ...prev,
       [slotId]: !prev[slotId]
     }));
+    
+    // If expanding and we don't have bookings loaded, fetch them
+    if (!isCurrentlyExpanded) {
+      const slot = slots.find(s => s.id === slotId);
+      if (slot) {
+        try {
+          console.log('📥 Fetching bookings for inline view:', slotId);
+          const response = await apiClient.get(`/help-desk-booking/slot/${slotId}`);
+          console.log('✅ Inline bookings:', response.data);
+          
+          // Update the slots array with fetched bookings
+          setSlots(prevSlots => 
+            prevSlots.map(s => 
+              s.id === slotId 
+                ? { ...s, helpDeskBookings: response.data }
+                : s
+            )
+          );
+        } catch (error: any) {
+          console.error('❌ Error fetching inline bookings:', error);
+          toast.error('Greška pri učitavanju rezervacija');
+        }
+      }
+    }
   };
 
   const formatDate = (dateString) => {
@@ -302,27 +351,40 @@ const HelpDeskSlots = () => {
                   <React.Fragment key={slot.id}>
                     <TableRow>
                       <TableCell>
-                        {bookingsCount > 0 && (
+                        {bookingsCount > 0 ? (
                           <IconButton
                             size="small"
                             onClick={() => toggleRow(slot.id)}
+                            color="primary"
                           >
                             {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                           </IconButton>
+                        ) : (
+                          <Box sx={{ width: 40, height: 40 }} />
                         )}
                       </TableCell>
                       <TableCell>
                         <Chip label={slot.maxChildren} color="primary" size="small" />
                       </TableCell>
                       <TableCell>
-                        <Chip 
-                          label={bookingsCount} 
-                          color={bookingsCount > 0 ? "success" : "default"} 
-                          size="small"
-                          icon={bookingsCount > 0 ? <PeopleIcon /> : undefined}
-                          onClick={bookingsCount > 0 ? () => handleViewBookings(slot) : undefined}
-                          style={{ cursor: bookingsCount > 0 ? 'pointer' : 'default' }}
-                        />
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                          <Chip 
+                            label={bookingsCount} 
+                            color={bookingsCount > 0 ? "success" : "default"} 
+                            size="small"
+                            icon={bookingsCount > 0 ? <PeopleIcon /> : undefined}
+                          />
+                          {bookingsCount > 0 && (
+                            <Button 
+                              size="small" 
+                              variant="outlined"
+                              onClick={() => handleViewBookings(slot)}
+                              startIcon={<PeopleIcon />}
+                            >
+                              Pregledaj
+                            </Button>
+                          )}
+                        </Box>
                       </TableCell>
                       <TableCell>
                         <Chip 
@@ -368,9 +430,23 @@ const HelpDeskSlots = () => {
                               <TableBody>
                                 {slot.helpDeskBookings && slot.helpDeskBookings.map((booking) => (
                                   <TableRow key={booking.id}>
-                                    <TableCell>{booking.user?.fullName || 'N/A'}</TableCell>
+                                    <TableCell>
+                                      <strong>{booking.user?.fullName || 'N/A'}</strong>
+                                      {booking.userId && (
+                                        <Typography variant="caption" display="block" color="text.secondary">
+                                          ID: {booking.userId}
+                                        </Typography>
+                                      )}
+                                    </TableCell>
                                     <TableCell>{booking.user?.email || 'N/A'}</TableCell>
-                                    <TableCell>{booking.child?.name || 'N/A'}</TableCell>
+                                    <TableCell>
+                                      {booking.child?.name || 'N/A'}
+                                      {booking.childId && (
+                                        <Typography variant="caption" display="block" color="text.secondary">
+                                          ID: {booking.childId}
+                                        </Typography>
+                                      )}
+                                    </TableCell>
                                     <TableCell>{formatDate(booking.createdAt)}</TableCell>
                                   </TableRow>
                                 ))}
@@ -458,29 +534,58 @@ const HelpDeskSlots = () => {
           {selectedSlotBookings.length === 0 ? (
             <Typography>Nema rezervacija</Typography>
           ) : (
-            <List>
-              {selectedSlotBookings.map((booking, index) => (
-                <React.Fragment key={booking.id}>
-                  {index > 0 && <Divider />}
-                  <ListItem>
-                    <ListItemText
-                      primary={`${booking.user?.fullName || 'N/A'} - ${booking.user?.email || 'N/A'}`}
-                      secondary={
-                        <>
-                          <Typography component="span" variant="body2">
-                            Dijete: {booking.child?.name || 'N/A'}
-                          </Typography>
-                          <br />
-                          <Typography component="span" variant="body2" color="text.secondary">
-                            Prijavljeno: {formatDate(booking.createdAt)}
-                          </Typography>
-                        </>
-                      }
-                    />
-                  </ListItem>
-                </React.Fragment>
-              ))}
-            </List>
+            <Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Ukupno prijavljenih: {selectedSlotBookings.length}
+              </Typography>
+              <List>
+                {selectedSlotBookings.map((booking, index) => (
+                  <React.Fragment key={booking.id}>
+                    {index > 0 && <Divider />}
+                    <ListItem sx={{ flexDirection: 'column', alignItems: 'flex-start', py: 2 }}>
+                      <ListItemText
+                        primary={
+                          <Box>
+                            <Typography variant="subtitle1" component="span" fontWeight="bold">
+                              {booking.user?.fullName || 'N/A'}
+                            </Typography>
+                            <Chip 
+                              label={`#${index + 1}`} 
+                              size="small" 
+                              sx={{ ml: 1 }}
+                              color="primary"
+                            />
+                          </Box>
+                        }
+                        secondary={
+                          <Box sx={{ mt: 1 }}>
+                            <Typography component="div" variant="body2">
+                              📧 Email: <strong>{booking.user?.email || 'N/A'}</strong>
+                            </Typography>
+                            <Typography component="div" variant="body2" sx={{ mt: 0.5 }}>
+                              👶 Dijete: <strong>{booking.child?.name || 'N/A'}</strong>
+                            </Typography>
+                            {booking.child?.age && (
+                              <Typography component="div" variant="body2" sx={{ mt: 0.5 }}>
+                                🎂 Uzrast: <strong>{booking.child.age} godina</strong>
+                              </Typography>
+                            )}
+                            <Typography component="div" variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                              📅 Prijavljeno: {formatDate(booking.createdAt)}
+                            </Typography>
+                            {booking.id && (
+                              <Typography component="div" variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                                Booking ID: {booking.id}
+                              </Typography>
+                            )}
+                          </Box>
+                        }
+                      />
+                    </ListItem>
+                  </React.Fragment>
+                ))}
+              </List>
+            </Box>
           )}
         </DialogContent>
         <DialogActions>
