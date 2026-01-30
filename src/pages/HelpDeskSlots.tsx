@@ -18,11 +18,19 @@ import {
   Typography,
   TextField,
   Chip,
+  Collapse,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
   Edit as EditIcon,
   Add as AddIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  People as PeopleIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { apiClient } from '../services/authService';
@@ -32,8 +40,11 @@ const HelpDeskSlots = () => {
   const [loading, setLoading] = useState(false);
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [bookingsDialogOpen, setBookingsDialogOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [selectedSlotBookings, setSelectedSlotBookings] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
+  const [expandedRows, setExpandedRows] = useState({});
 
   // Form fields
   const [formMaxChildren, setFormMaxChildren] = useState(10);
@@ -44,9 +55,11 @@ const HelpDeskSlots = () => {
     setLoading(true);
     try {
       const response = await apiClient.get('/help-desk-slots');
+      console.log('📦 Fetched slots:', response.data);
       setSlots(response.data);
     } catch (error: any) {
-      toast.error('Greška pri učitavanju termina: ' + error.message);
+      console.error('❌ Error fetching slots:', error);
+      toast.error('Greška pri učitavanju termina: ' + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
     }
@@ -54,7 +67,6 @@ const HelpDeskSlots = () => {
 
   useEffect(() => {
     fetchSlots();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleOpenCreateDialog = () => {
@@ -78,7 +90,7 @@ const HelpDeskSlots = () => {
     setSelectedSlot(slot);
     setFormMaxChildren(slot.maxChildren || 10);
     
-    // Handle startAt (MALO SLOVO!)
+    // Handle startAt
     if (slot.startAt) {
       try {
         const date = new Date(slot.startAt);
@@ -94,7 +106,7 @@ const HelpDeskSlots = () => {
       setFormStartAt('');
     }
 
-    // Handle endAt (MALO SLOVO!)
+    // Handle endAt
     if (slot.endAt) {
       try {
         const date = new Date(slot.endAt);
@@ -140,25 +152,29 @@ const HelpDeskSlots = () => {
     }
 
     const payload = {
-      maxChildren: formMaxChildren,
-      startAt: startDate.toISOString(),  // MALO SLOVO!
-      endAt: endDate.toISOString(),      // MALO SLOVO!
+      maxChildren: Number(formMaxChildren),
+      startAt: startDate.toISOString(),
+      endAt: endDate.toISOString(),
     };
+
+    console.log('📤 Sending payload:', payload);
 
     try {
       if (isEditing && selectedSlot) {
-        // PATCH /help-desk-slots/{id}
+        console.log('🔄 PATCH /help-desk-slots/' + selectedSlot.id);
         await apiClient.patch(`/help-desk-slots/${selectedSlot.id}`, payload);
         toast.success('Termin uspješno ažuriran');
       } else {
-        // POST /help-desk-slots
+        console.log('➕ POST /help-desk-slots');
         await apiClient.post('/help-desk-slots', payload);
         toast.success('Termin uspješno kreiran');
       }
       setFormDialogOpen(false);
       fetchSlots();
     } catch (error: any) {
-      toast.error('Greška: ' + error.message);
+      console.error('❌ API Error:', error.response?.data || error);
+      const errorMsg = error.response?.data?.message || error.message || 'Nepoznata greška';
+      toast.error('Greška: ' + errorMsg);
     }
   };
 
@@ -175,8 +191,27 @@ const HelpDeskSlots = () => {
       setDeleteDialogOpen(false);
       fetchSlots();
     } catch (error: any) {
-      toast.error('Greška pri brisanju termina: ' + error.message);
+      toast.error('Greška pri brisanju termina: ' + (error.response?.data?.message || error.message));
     }
+  };
+
+  const handleViewBookings = async (slot) => {
+    setSelectedSlot(slot);
+    
+    // Bookings are already in slot.helpDeskBookings
+    if (slot.helpDeskBookings && slot.helpDeskBookings.length > 0) {
+      setSelectedSlotBookings(slot.helpDeskBookings);
+      setBookingsDialogOpen(true);
+    } else {
+      toast.info('Nema rezervacija za ovaj termin');
+    }
+  };
+
+  const toggleRow = (slotId) => {
+    setExpandedRows(prev => ({
+      ...prev,
+      [slotId]: !prev[slotId]
+    }));
   };
 
   const formatDate = (dateString) => {
@@ -184,7 +219,13 @@ const HelpDeskSlots = () => {
     try {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return 'Invalid Date';
-      return date.toLocaleString('sr-RS');
+      return date.toLocaleString('sr-RS', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
     } catch (e) {
       return 'Invalid Date';
     }
@@ -231,6 +272,7 @@ const HelpDeskSlots = () => {
         <Table>
           <TableHead>
             <TableRow>
+              <TableCell width="50px"></TableCell>
               <TableCell>Max Djece</TableCell>
               <TableCell>Rezervacije</TableCell>
               <TableCell>Slobodno</TableCell>
@@ -242,11 +284,11 @@ const HelpDeskSlots = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} align="center">Učitavanje...</TableCell>
+                <TableCell colSpan={7} align="center">Učitavanje...</TableCell>
               </TableRow>
             ) : slots.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} align="center">Nema termina</TableCell>
+                <TableCell colSpan={7} align="center">Nema termina</TableCell>
               </TableRow>
             ) : (
               slots.map((slot) => {
@@ -254,40 +296,91 @@ const HelpDeskSlots = () => {
                 const availableSpots = getAvailableSpots(slot);
                 const isFull = availableSpots === 0;
                 const canEdit = canEditSlot(slot);
+                const isExpanded = expandedRows[slot.id];
 
                 return (
-                  <TableRow key={slot.id}>
-                    <TableCell><Chip label={slot.maxChildren} color="primary" size="small" /></TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={bookingsCount} 
-                        color={bookingsCount > 0 ? "success" : "default"} 
-                        size="small" 
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={availableSpots} 
-                        color={isFull ? "error" : "success"} 
-                        size="small" 
-                      />
-                    </TableCell>
-                    <TableCell>{formatDate(slot.startAt)}</TableCell>
-                    <TableCell>{formatDate(slot.endAt)}</TableCell>
-                    <TableCell align="right">
-                      <IconButton 
-                        color="primary" 
-                        onClick={() => handleOpenEditDialog(slot)}
-                        disabled={!canEdit}
-                        title={canEdit ? "Uredi" : "Ne može se urediti termin sa rezervacijama"}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton color="error" onClick={() => handleDeleteSlot(slot)}>
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
+                  <React.Fragment key={slot.id}>
+                    <TableRow>
+                      <TableCell>
+                        {bookingsCount > 0 && (
+                          <IconButton
+                            size="small"
+                            onClick={() => toggleRow(slot.id)}
+                          >
+                            {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                          </IconButton>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Chip label={slot.maxChildren} color="primary" size="small" />
+                      </TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={bookingsCount} 
+                          color={bookingsCount > 0 ? "success" : "default"} 
+                          size="small"
+                          icon={bookingsCount > 0 ? <PeopleIcon /> : undefined}
+                          onClick={bookingsCount > 0 ? () => handleViewBookings(slot) : undefined}
+                          style={{ cursor: bookingsCount > 0 ? 'pointer' : 'default' }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={availableSpots} 
+                          color={isFull ? "error" : "success"} 
+                          size="small" 
+                        />
+                      </TableCell>
+                      <TableCell>{formatDate(slot.startAt)}</TableCell>
+                      <TableCell>{formatDate(slot.endAt)}</TableCell>
+                      <TableCell align="right">
+                        <IconButton 
+                          color="primary" 
+                          onClick={() => handleOpenEditDialog(slot)}
+                          disabled={!canEdit}
+                          title={canEdit ? "Uredi" : "Ne može se urediti termin sa rezervacijama"}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton color="error" onClick={() => handleDeleteSlot(slot)}>
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                    
+                    {/* Expanded row showing bookings inline */}
+                    <TableRow>
+                      <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
+                        <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                          <Box sx={{ margin: 2 }}>
+                            <Typography variant="h6" gutterBottom component="div">
+                              Prijavljeni roditelji ({bookingsCount})
+                            </Typography>
+                            <Table size="small">
+                              <TableHead>
+                                <TableRow>
+                                  <TableCell>Roditelj</TableCell>
+                                  <TableCell>Email</TableCell>
+                                  <TableCell>Dijete</TableCell>
+                                  <TableCell>Datum prijave</TableCell>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {slot.helpDeskBookings && slot.helpDeskBookings.map((booking) => (
+                                  <TableRow key={booking.id}>
+                                    <TableCell>{booking.user?.fullName || 'N/A'}</TableCell>
+                                    <TableCell>{booking.user?.email || 'N/A'}</TableCell>
+                                    <TableCell>{booking.child?.name || 'N/A'}</TableCell>
+                                    <TableCell>{formatDate(booking.createdAt)}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </Box>
+                        </Collapse>
+                      </TableCell>
+                    </TableRow>
+                  </React.Fragment>
                 );
               })
             )}
@@ -348,6 +441,50 @@ const HelpDeskSlots = () => {
         <DialogActions>
           <Button onClick={() => setDeleteDialogOpen(false)}>Otkaži</Button>
           <Button onClick={handleConfirmDelete} variant="contained" color="error">Obriši</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Bookings Dialog */}
+      <Dialog 
+        open={bookingsDialogOpen} 
+        onClose={() => setBookingsDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Prijavljeni roditelji - {selectedSlot && formatDate(selectedSlot.startAt)}
+        </DialogTitle>
+        <DialogContent>
+          {selectedSlotBookings.length === 0 ? (
+            <Typography>Nema rezervacija</Typography>
+          ) : (
+            <List>
+              {selectedSlotBookings.map((booking, index) => (
+                <React.Fragment key={booking.id}>
+                  {index > 0 && <Divider />}
+                  <ListItem>
+                    <ListItemText
+                      primary={`${booking.user?.fullName || 'N/A'} - ${booking.user?.email || 'N/A'}`}
+                      secondary={
+                        <>
+                          <Typography component="span" variant="body2">
+                            Dijete: {booking.child?.name || 'N/A'}
+                          </Typography>
+                          <br />
+                          <Typography component="span" variant="body2" color="text.secondary">
+                            Prijavljeno: {formatDate(booking.createdAt)}
+                          </Typography>
+                        </>
+                      }
+                    />
+                  </ListItem>
+                </React.Fragment>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBookingsDialogOpen(false)}>Zatvori</Button>
         </DialogActions>
       </Dialog>
     </Box>
