@@ -51,30 +51,42 @@ const HelpDeskSlots = () => {
   const [formStartAt, setFormStartAt] = useState('');
   const [formEndAt, setFormEndAt] = useState('');
 
-  const fetchSlots = async () => {
-    setLoading(true);
-    try {
-      const response = await apiClient.get('/help-desk-slots');
-      console.log('📦 Fetched slots:', response.data);
-      
-      // Log bookings count for each slot
-      response.data.forEach(slot => {
-        const bookingsCount = slot.helpDeskBookings?.length || 0;
-        console.log(`Slot ${slot.id}: ${bookingsCount} bookings`, slot.helpDeskBookings);
-      });
-      
-      setSlots(response.data);
-    } catch (error: any) {
-      console.error('❌ Error fetching slots:', error);
-      toast.error('Greška pri učitavanju termina: ' + (error.response?.data?.message || error.message));
-    } finally {
-      setLoading(false);
+  const fetchSlots = async (doctorId?: string) => {
+  setLoading(true);
+  try {
+    let data: Slot[] = [];
+    if (doctorId) {
+      data = await SlotService.getSlotsByDoctor(doctorId);
+    } else {
+      // Dohvati slotove za SVE eksperte
+      const allSlots: Slot[] = [];
+      for (const expert of experts) {
+        try {
+          const expertSlots = await SlotService.getSlotsByDoctor(expert.id);
+          if (expertSlots && expertSlots.length > 0) {
+            allSlots.push(...expertSlots);
+          }
+        } catch (err) {
+          console.warn(`Failed to fetch slots for expert ${expert.id}`, err);
+        }
+      }
+      data = allSlots;
     }
-  };
+    setSlots(data || []);
+  } catch (error: any) {
+    console.error('Error fetching slots:', error);
+    toast.error('Greška pri učitavanju termina');
+    setSlots([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
+  if (experts.length > 0) {
     fetchSlots();
-  }, []);
+  }
+}, [experts]);
 
   const handleOpenCreateDialog = () => {
     setIsEditing(false);
