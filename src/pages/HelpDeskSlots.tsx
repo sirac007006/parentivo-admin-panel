@@ -51,42 +51,25 @@ const HelpDeskSlots = () => {
   const [formStartAt, setFormStartAt] = useState('');
   const [formEndAt, setFormEndAt] = useState('');
 
-  const fetchSlots = async (doctorId?: string) => {
-  setLoading(true);
-  try {
-    let data: Slot[] = [];
-    if (doctorId) {
-      data = await SlotService.getSlotsByDoctor(doctorId);
-    } else {
-      // Dohvati slotove za SVE eksperte
-      const allSlots: Slot[] = [];
-      for (const expert of experts) {
-        try {
-          const expertSlots = await SlotService.getSlotsByDoctor(expert.id);
-          if (expertSlots && expertSlots.length > 0) {
-            allSlots.push(...expertSlots);
-          }
-        } catch (err) {
-          console.warn(`Failed to fetch slots for expert ${expert.id}`, err);
-        }
-      }
-      data = allSlots;
+  const fetchSlots = async () => {
+    setLoading(true);
+    try {
+      console.log('📥 Fetching help desk slots...');
+      const response = await apiClient.get('/help-desk-slots');
+      console.log('✅ Help desk slots loaded:', response.data);
+      setSlots(response.data || []);
+    } catch (error) {
+      console.error('❌ Error fetching help desk slots:', error);
+      toast.error('Greška pri učitavanju termina');
+      setSlots([]);
+    } finally {
+      setLoading(false);
     }
-    setSlots(data || []);
-  } catch (error: any) {
-    console.error('Error fetching slots:', error);
-    toast.error('Greška pri učitavanju termina');
-    setSlots([]);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   useEffect(() => {
-  if (experts.length > 0) {
     fetchSlots();
-  }
-}, [experts]);
+  }, []);
 
   const handleOpenCreateDialog = () => {
     setIsEditing(false);
@@ -190,7 +173,7 @@ const HelpDeskSlots = () => {
       }
       setFormDialogOpen(false);
       fetchSlots();
-    } catch (error: any) {
+    } catch (error) {
       console.error('❌ API Error:', error.response?.data || error);
       const errorMsg = error.response?.data?.message || error.message || 'Nepoznata greška';
       toast.error('Greška: ' + errorMsg);
@@ -209,7 +192,7 @@ const HelpDeskSlots = () => {
       toast.success('Termin uspješno obrisan');
       setDeleteDialogOpen(false);
       fetchSlots();
-    } catch (error: any) {
+    } catch (error) {
       toast.error('Greška pri brisanju termina: ' + (error.response?.data?.message || error.message));
     }
   };
@@ -229,7 +212,7 @@ const HelpDeskSlots = () => {
       } else {
         toast.info('Nema rezervacija za ovaj termin');
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('❌ Error fetching bookings:', error);
       
       // Fallback to slot.helpDeskBookings if API fails
@@ -267,7 +250,7 @@ const HelpDeskSlots = () => {
                 : s
             )
           );
-        } catch (error: any) {
+        } catch (error) {
           console.error('❌ Error fetching inline bookings:', error);
           toast.error('Greška pri učitavanju rezervacija');
         }
