@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -62,6 +62,9 @@ const ExpertSlots = () => {
   const [formStartAt, setFormStartAt] = useState('');
   const [formEndAt, setFormEndAt] = useState('');
 
+  // Ref to track if initial slots fetch happened
+  const initialFetchDone = useRef(false);
+
   const fetchExperts = async () => {
     try {
       const data = await UserService.getExperts();
@@ -73,39 +76,34 @@ const ExpertSlots = () => {
     }
   };
 
-  const fetchSlots = async (doctorId?: string) => {
+  const fetchSlots = async (doctorId?: string, expertsList?: User[]) => {
     setLoading(true);
     try {
-      let data;
+      let data: any[] = [];
       if (doctorId) {
         // GET /slots/doctor/{id} - za specifičnog doktora
         console.log('📥 Fetching slots for doctor:', doctorId);
         data = await SlotService.getSlotsByDoctor(doctorId);
         console.log('✅ Slots for doctor loaded:', data);
       } else {
-        // GET /slots/my - vraća termine trenutno ulogovanog eksperta SA appointment objektom
-        console.log('📥 Fetching all my slots with appointments...');
-        data = await SlotService.getMySlots();
-        console.log('✅ My slots loaded:', data);
+        // Dohvati slotove za SVE eksperte koristeći /slots/doctor/{id}
+        // NIKAD ne koristimo /slots/my jer admin nije expert
+        const currentExperts = expertsList || experts;
+        console.log('📥 Fetching slots for all experts...', currentExperts.length, 'experts');
         
-        // Log appointment data for debugging
-        if (data && data.length > 0) {
-          console.log(`📊 Total slots: ${data.length}`);
-          data.forEach((slot, index) => {
-            if (slot.appointment) {
-              console.log(`Slot #${index + 1} (${slot.id}):`, {
-                isBooked: slot.isBooked,
-                appointmentId: slot.appointment.id,
-                userName: slot.appointment.user?.fullName || 'N/A',
-                userEmail: slot.appointment.user?.email || 'N/A',
-              });
-            } else if (slot.isBooked) {
-              console.warn(`⚠️ Slot #${index + 1} (${slot.id}) is marked as booked but has NO appointment object!`);
+        const allSlots: any[] = [];
+        for (const expert of currentExperts) {
+          try {
+            const expertSlots = await SlotService.getSlotsByDoctor(expert.id);
+            if (expertSlots && expertSlots.length > 0) {
+              allSlots.push(...expertSlots);
             }
-          });
-        } else {
-          console.log('📭 No slots found');
+          } catch (err: any) {
+            console.warn(`⚠️ Failed to fetch slots for expert ${expert.fullName} (${expert.id}):`, err.message);
+          }
         }
+        data = allSlots;
+        console.log(`✅ Total slots loaded: ${data.length}`);
       }
       
       setSlots(data || []);
@@ -119,17 +117,25 @@ const ExpertSlots = () => {
     }
   };
 
+  // Prvo učitaj eksperte
   useEffect(() => {
     fetchExperts();
-    fetchSlots();
   }, []);
+
+  // Kad se eksperti učitaju, dohvati slotove
+  useEffect(() => {
+    if (experts.length > 0 && !initialFetchDone.current) {
+      initialFetchDone.current = true;
+      fetchSlots(undefined, experts);
+    }
+  }, [experts]);
 
   const handleExpertFilterChange = (expertId: string) => {
     setSelectedExpertFilter(expertId);
     if (expertId) {
       fetchSlots(expertId);
     } else {
-      fetchSlots();
+      fetchSlots(undefined, experts);
     }
   };
 
@@ -269,7 +275,7 @@ const ExpertSlots = () => {
       if (selectedExpertFilter) {
         fetchSlots(selectedExpertFilter);
       } else {
-        fetchSlots();
+        fetchSlots(undefined, experts);
       }
     } catch (error: any) {
       console.error('❌ API Error:', error.response?.data || error);
@@ -351,7 +357,7 @@ const ExpertSlots = () => {
       if (selectedExpertFilter) {
         fetchSlots(selectedExpertFilter);
       } else {
-        fetchSlots();
+        fetchSlots(undefined, experts);
       }
     } catch (error: any) {
       console.error('❌ Delete Error:', error.response?.data || error);
@@ -470,7 +476,7 @@ const ExpertSlots = () => {
                 if (selectedExpertFilter) {
                   fetchSlots(selectedExpertFilter);
                 } else {
-                  fetchSlots();
+                  fetchSlots(undefined, experts);
                 }
               }}
             >
